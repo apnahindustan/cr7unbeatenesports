@@ -14,9 +14,11 @@ body{margin:0;background:#0e0e0e;color:white;font-family:Arial;}
 .menu{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:10px;}
 .menu button{padding:8px 14px;border:none;background:#ffb84d;cursor:pointer;font-weight:bold;}
 .resultBox{max-width:1000px;margin:auto;padding:20px;background-size:cover;background-position:center;border-radius:10px;}
-.resultHeader{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;}
+.resultHeader{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .resultHeader img{height:60px;}
-.title{font-size:28px;font-weight:bold;}
+.titleBlock{text-align:center;flex:1;}
+.titleText{font-size:28px;font-weight:bold;}
+.orgText{font-size:18px;font-weight:bold;margin-top:4px;}
 table{width:100%;border-collapse:separate;border-spacing:0 8px;}
 th{background:#000;color:#fff;padding:10px;}
 td{padding:10px;text-align:center;}
@@ -24,6 +26,7 @@ td{padding:10px;text-align:center;}
 .team{background:#0a0a2a;text-align:left;font-weight:bold;}
 .stat{background:#ffd400;color:#000;font-weight:bold;}
 .card{background:#1c1c1c;padding:10px;margin:10px;border-radius:6px;}
+.dlBtn{display:block;margin:10px auto;padding:8px 20px;background:#ffb84d;border:none;cursor:pointer;font-weight:bold;font-size:14px;border-radius:4px;}
 </style>
 </head>
 <body>
@@ -45,6 +48,7 @@ td{padding:10px;text-align:center;}
 
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 
 const firebaseConfig={
@@ -108,7 +112,7 @@ db.ref("teams").once("value"),
 db.ref(`tournament/live/matches/${match}`).once("value"),
 db.ref("design").once("value")
 ]).then(([ts,ms,ds])=>{
-buildTable(ts.val()||{},ms,ds);
+buildTable(ts.val()||{},ms,ds,`match${num}`);
 });
 }
 
@@ -140,13 +144,15 @@ db.ref(`tournament/history/${name}/teamsSnapshot`).once("value"),
 db.ref(`tournament/history/${name}/matches/${match}`).once("value"),
 db.ref("design").once("value")
 ]).then(([ts,ms,ds])=>{
-buildTable(ts.val()||{},ms,ds);
+buildTable(ts.val()||{},ms,ds,`${name}_match${num}`);
 });
 }
 
-function buildTable(teams,ms,ds){
+function buildTable(teams,ms,ds,filename){
 const matchData=ms.val()||{};
 const design=ds.val()||{};
+const tColor=design.titleColor||"#ffffff";
+const oColor=design.orgColor||"#ffb84d";
 
 let teamsArray=[];
 Object.keys(teams).forEach(id=>{
@@ -159,10 +165,14 @@ if(!hasResult){content.innerHTML+="<h3>No Result Found</h3>";return;}
 
 teamsArray.sort((a,b)=>b.total-a.total);
 
-let html=`<div class="resultBox" style="background-image:url('${design.bg||""}')">
+const tableId="tbl_"+Date.now();
+
+let html=`
+<div id="${tableId}" class="resultBox" style="background-image:url('${design.bg||""}')">
 <div class="resultHeader">
-<img src="${design.logo||""}">
-<div class="title">${design.title||"RESULT"}</div>
+<div class="titleText" style="color:${tColor};font-weight:bold;flex:1;text-align:left;">${design.title||"RESULT"}</div>
+<img src="${design.logo||""}" style="height:60px;display:block;margin:0 auto;">
+<div class="orgText" style="color:${oColor};font-weight:bold;flex:1;text-align:right;">${design.organization||""}</div>
 </div>
 <table>
 <tr><th>RANK</th><th>TEAM NAME</th><th>KILLS</th><th>PLACE</th><th>TOTAL</th></tr>`;
@@ -179,8 +189,20 @@ html+=`<tr>
 rank++;
 });
 
-html+="</table></div>";
+html+=`</table></div>
+<button class="dlBtn" onclick="downloadPNG('${tableId}','${filename}')">⬇ Download PNG</button>`;
+
 content.innerHTML+=html;
+}
+
+function downloadPNG(id,filename){
+const el=document.getElementById(id);
+html2canvas(el,{useCORS:true,scale:2}).then(canvas=>{
+const a=document.createElement("a");
+a.href=canvas.toDataURL("image/png");
+a.download=(filename||"result")+".png";
+a.click();
+});
 }
 
 showLive();
