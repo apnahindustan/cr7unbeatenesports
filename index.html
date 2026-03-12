@@ -23,26 +23,30 @@ padding:10px;
 border-bottom:2px solid #ffb84d;
 }
 
-.logo{
-height:40px;
-}
+.logo{height:40px;}
 
 .site{
 font-size:18px;
 font-weight:bold;
 }
 
+/* BANNER */
+
 .bannerSlider{
 display:flex;
-overflow-x:auto;
-gap:10px;
+justify-content:center;
+gap:15px;
 padding:10px;
+overflow-x:auto;
+scroll-behavior:smooth;
 }
 
 .bannerSlider img{
 height:140px;
 border-radius:6px;
 }
+
+/* MENU */
 
 .menu{
 display:flex;
@@ -60,6 +64,8 @@ cursor:pointer;
 font-weight:bold;
 }
 
+/* RESULT */
+
 .resultBox{
 max-width:1000px;
 margin:auto;
@@ -76,9 +82,7 @@ justify-content:space-between;
 margin-bottom:15px;
 }
 
-.resultHeader img{
-height:60px;
-}
+.resultHeader img{height:60px;}
 
 .title{
 font-size:28px;
@@ -168,6 +172,7 @@ const db=firebase.database();
 const content=document.getElementById("content");
 
 
+
 /* ---------------- BANNERS ---------------- */
 
 db.ref("banners").on("value",snap=>{
@@ -175,20 +180,20 @@ db.ref("banners").on("value",snap=>{
 let html="";
 
 snap.forEach(b=>{
-
 const d=b.val();
+html+=`<a href="${d.link}" target="_blank"><img src="${d.image}"></a>`;
+});
 
-html+=`
-<a href="${d.link}" target="_blank">
-<img src="${d.image}">
-</a>
-`;
+bannerSlider.innerHTML=html;
+
+/* auto scroll */
+
+setInterval(()=>{
+bannerSlider.scrollLeft+=1;
+},30);
 
 });
 
-document.getElementById("bannerSlider").innerHTML=html;
-
-});
 
 
 /* ---------------- SCHEDULE ---------------- */
@@ -198,6 +203,11 @@ function showSchedule(){
 content.innerHTML="<h3 style='text-align:center'>Match Schedule</h3>";
 
 db.ref("schedule").once("value",snap=>{
+
+if(!snap.exists()){
+content.innerHTML+="<h3>No Result Found</h3>";
+return;
+}
 
 snap.forEach(s=>{
 
@@ -210,11 +220,8 @@ content.innerHTML+=`
 <b>${s.key}</b><br>
 
 Map : ${d.map}<br>
-
 Group : ${d.group}<br>
-
 Date : ${d.date}<br>
-
 Time : ${d.time}
 
 </div>
@@ -228,23 +235,24 @@ Time : ${d.time}
 }
 
 
+
 /* ---------------- LIVE RESULT ---------------- */
 
 function showLive(){
 
 content.innerHTML="<h3>Live Result</h3>";
 
-Promise.all([
-db.ref("tournament/live").once("value"),
-db.ref("design").once("value")
-]).then(([liveSnap,designSnap])=>{
+db.ref("tournament/live").once("value",snap=>{
 
-if(!liveSnap.exists()){
-content.innerHTML+="No Live Match";
+if(!snap.exists()){
+content.innerHTML="<h3>No Result Found</h3>";
 return;
 }
 
-const live=liveSnap.val();
+const live=snap.val();
+
+db.ref("design").once("value",designSnap=>{
+
 const design=designSnap.val()||{};
 
 content.innerHTML+=`<h3>${design.title||"Tournament"}</h3>`;
@@ -261,12 +269,20 @@ MATCH ${i}
 
 });
 
+});
+
 }
+
 
 
 function loadLiveMatch(n){
+
+content.innerHTML=`<h3 style="text-align:center">MATCH ${n}</h3>`;
+
 loadMatchTable(`tournament/live/matches/match${n}`);
+
 }
+
 
 
 /* ---------------- HISTORY ---------------- */
@@ -276,6 +292,11 @@ function showHistory(){
 content.innerHTML="<h3>Previous Tournament</h3>";
 
 db.ref("tournament/history").once("value",snap=>{
+
+if(!snap.exists()){
+content.innerHTML="<h3>No Result Found</h3>";
+return;
+}
 
 snap.forEach(t=>{
 
@@ -311,13 +332,9 @@ db.ref(`tournament/history/${name}/matches`).once("value",snap=>{
 snap.forEach(m=>{
 
 content.innerHTML+=`
-
 <button onclick="loadHistoryMatch('${name}','${m.key}')">
-
 ${m.key}
-
 </button>
-
 `;
 
 });
@@ -329,9 +346,12 @@ ${m.key}
 
 function loadHistoryMatch(name,match){
 
+content.innerHTML=`<h3 style="text-align:center">${match}</h3>`;
+
 loadMatchTable(`tournament/history/${name}/matches/${match}`);
 
 }
+
 
 
 /* ---------------- TABLE ---------------- */
@@ -346,6 +366,12 @@ db.ref("design").once("value")
 
 const teams=ts.val()||{};
 const match=ms.val()||{};
+
+if(Object.keys(match).length===0){
+content.innerHTML+="<h3>No Result Found</h3>";
+return;
+}
+
 const design=ds.val()||{};
 
 let teamsArray=[];
